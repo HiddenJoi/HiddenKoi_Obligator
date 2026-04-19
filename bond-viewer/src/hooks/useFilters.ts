@@ -1,16 +1,7 @@
-import { useState, useCallback, useMemo } from 'react'
-import type { BondsFilterParams, CouponType, SortBy } from '../types'
+import { useState, useCallback } from 'react'
+import type { FilterState, CouponType, SortBy } from '../types'
 
-export interface FilterState {
-  minYield: number | undefined
-  maxYield: number | undefined
-  minDuration: number | undefined
-  maxDuration: number | undefined
-  couponType: CouponType | undefined
-  search: string
-  hasOffer: boolean
-  hasAmortization: boolean
-}
+export type { FilterState }
 
 const DEFAULT_FILTERS: FilterState = {
   minYield: undefined,

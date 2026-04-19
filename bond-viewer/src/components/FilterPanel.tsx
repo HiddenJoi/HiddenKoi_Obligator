@@ -71,8 +71,7 @@ export function FilterPanel({ pending, onUpdate, onApply, onReset, activeCount, 
     if (debouncedSearch !== pending.search) {
       onUpdate("search", debouncedSearch)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch])
+  }, [debouncedSearch, pending.search, onUpdate])
 
   const couponOptions: { label: string; value: CouponType | undefined }[] = [
     { label: "Все типы", value: undefined },

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getRecommendations } from '../services/api'
 import type { RecommendationParams, RecommendationsResponse } from '../types'
 
@@ -33,7 +33,7 @@ export function useRecommendations(params: RecommendationParams): UseRecommendat
 
   useEffect(() => {
     fetch()
-  }, []) // eslint-disable-line — params变化时由外部控制
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     data,

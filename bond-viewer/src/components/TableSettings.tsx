@@ -32,7 +32,8 @@ export function TableSettings({
       b.has_offer === true ? "✓" : b.has_offer === false ? "—" : "",
       b.has_amortization === true ? "✓" : b.has_amortization === false ? "—" : "",
     ])
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n")
+    // Use semicolon as separator for better Russian Excel compatibility
+    const csv = [headers.join(";"), ...rows.map((r) => r.join(";"))].join("\n")
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")

@@ -9,6 +9,8 @@ export type SortBy =
   | 'coupon_desc' | 'coupon_asc'
   | 'name_desc' | 'name_asc'
 
+export type SortField = 'yield' | 'maturity' | 'duration' | 'coupon' | 'name'
+
 // ── Domain Models ──────────────────────────────────────────────────────────
 
 export interface Bond {
@@ -84,6 +86,17 @@ export interface BondsFilterParams {
   has_amortization?: boolean
 }
 
+export interface FilterState {
+  minYield: number | undefined
+  maxYield: number | undefined
+  minDuration: number | undefined
+  maxDuration: number | undefined
+  couponType: CouponType | undefined
+  search: string
+  hasOffer: boolean
+  hasAmortization: boolean
+}
+
 // ── Recommendations ────────────────────────────────────────────────────────
 
 export interface BondRecommendation {
@@ -112,4 +125,170 @@ export interface RecommendationParams {
 
 export interface ApiError {
   detail: string
+}
+
+// ── Portfolio ──────────────────────────────────────────────────────────────
+
+export interface Portfolio {
+  id: number
+  user_id: number
+  name: string
+}
+
+export interface PositionDetail {
+  id: number
+  secid: string
+  quantity: number
+  avg_price: number
+  close_price: number | null
+  nkd: number | null
+  price_date: string | null
+  name: string | null
+  face_value: number | null
+  coupon_type: string | null
+  coupon_value: number | null
+  coupon_period: number | null
+  maturity_date: string | null
+  reliability_score: number | null
+  is_junk: boolean | null
+  current_value: number | null
+}
+
+export interface PortfolioDetail {
+  id: number
+  user_id: number
+  name: string
+  total_value: number | null
+  positions: PositionDetail[]
+}
+
+export interface AllocationItem {
+  coupon_type: string
+  value: number
+  pct: number
+}
+
+export interface PositionItem {
+  secid: string
+  name: string | null
+  quantity: number
+  avg_price: number
+  current_price: number
+  pnl: number
+  yield_: number
+  duration: number
+}
+
+export interface GoalDeviation {
+  target_yield: number
+  current_yield: number
+  delta: number
+  target_monthly_income: number
+  current_monthly_income: number
+  cashflow_delta: number
+}
+
+export interface DashboardData {
+  total_value: number
+  total_invested: number
+  total_pnl: number
+  total_pnl_pct: number
+  weighted_ytm: number
+  weighted_duration: number
+  allocation: AllocationItem[]
+  positions: PositionItem[]
+  goals_deviation: GoalDeviation | null
+}
+
+export interface Goal {
+  id: number
+  user_id: number
+  target_yield: number
+  max_duration: number
+  target_monthly_income: number
+  created_at: string | null
+}
+
+export interface CreateGoalParams {
+  target_yield: number
+  max_duration: number
+  target_monthly_income: number
+}
+
+export interface CashAccount {
+  id: number
+  user_id: number
+  balance: number
+  updated_at: string | null
+}
+
+export interface Transaction {
+  id: number
+  user_id: number
+  secid: string | null
+  type: 'buy' | 'sell' | 'coupon' | 'deposit' | 'withdraw'
+  quantity: number | null
+  price: number | null
+  amount: number
+  commission: number
+  date: string
+  created_at: string
+}
+
+export interface CreateTransactionParams {
+  type: 'buy' | 'sell' | 'coupon' | 'deposit' | 'withdraw'
+  amount: number
+  secid?: string
+  quantity?: number
+  price?: number
+  commission?: number
+  date?: string
+}
+
+export interface TransactionListData {
+  total: number
+  transactions: Transaction[]
+}
+
+export interface CashflowItem {
+  date: string
+  secid: string
+  amount: number
+}
+
+export interface MonthlyCashflow {
+  year_month: string
+  total: number
+  items: CashflowItem[]
+}
+
+export interface CashflowData {
+  items: CashflowItem[]
+  by_month: MonthlyCashflow[]
+}
+
+export interface HistoryPoint {
+  date: string
+  value: number
+  cash: number | null
+  invested_value: number | null
+  pnl: number | null
+}
+
+export interface HistoryData {
+  period: string
+  points: HistoryPoint[]
+}
+
+export interface AdjustmentRecommendation {
+  action: 'buy' | 'sell'
+  secid: string
+  name: string | null
+  reason: string | null
+  score: number | null
+  impact: { yield?: number; duration?: number } | null
+}
+
+export interface PortfolioAdjustmentData {
+  recommendations: AdjustmentRecommendation[]
 }

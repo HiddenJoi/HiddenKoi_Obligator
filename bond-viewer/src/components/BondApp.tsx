@@ -71,18 +71,23 @@ export function BondApp() {
     })
   }
 
-  // ── Table settings from localStorage ─────────────────────────────
-
   // ── Data state ───────────────────────────────────────────────────
   const [rawBonds, setRawBonds] = useState<BondListItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // ── Computed values ───────────────────────────────────────────────
-  const totalPages = Math.ceil(total / limit) || 1
-  const currentPage = Math.min(page, totalPages - 1)
-  const from = total > 0 ? page * limit + 1 : 0
-  const to = Math.min((page + 1) * limit, total)
+  const totalPages = Math.max(1, Math.ceil(total / limit))
+  const currentPage = Math.max(0, Math.min(page, totalPages - 1))
+  const from = total > 0 ? currentPage * limit + 1 : 0
+  const to = Math.min((currentPage + 1) * limit, total)
+
+  // Keep page in bounds when totalPages shrinks
+  useEffect(() => {
+    if (page > 0 && page >= totalPages) {
+      setPage(totalPages - 1)
+    }
+  }, [totalPages, page, setPage])
 
   // Filter bonds by favorites
   const displayedBonds = useMemo(() => {
@@ -94,7 +99,7 @@ export function BondApp() {
   // ── Sync URL <- local state ──────────────────────────────────────────
   const { syncToUrl } = useUrlParams({
     pending, applied,
-    sortBy: defaultSortBy, page: currentPage,
+    sortBy: defaultSortBy, page: currentPage, limit,
     onFiltersFromUrl: updatePending,
     onSortByFromUrl: setDefaultSortBy,
     onPageFromUrl: setPage,
@@ -123,7 +128,6 @@ export function BondApp() {
       setLoading(true)
       setError(null)
       try {
-        // Use limit from state, not from toParams
         const data: BondListResponse = await getBonds({
           limit,
           offset: currentPage * limit,
@@ -170,7 +174,7 @@ export function BondApp() {
   }
 
   function handlePageChange(newPage: number) {
-    setPage(newPage)
+    setPage(Math.max(0, newPage))
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
@@ -187,7 +191,6 @@ export function BondApp() {
         isDefault={isDefault}
       />
 
-      {/* Table settings bar */}
       <TableSettings
         showFavoritesOnly={showFavoritesOnly}
         onShowFavoritesChange={setShowFavoritesOnly}
@@ -197,7 +200,6 @@ export function BondApp() {
         favorites={favorites}
       />
 
-      {/* Pagination info + limit selector */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <PaginationInfo from={from} to={to} total={total} />
         <LimitSelect value={limit} onChange={handleLimitChange} />

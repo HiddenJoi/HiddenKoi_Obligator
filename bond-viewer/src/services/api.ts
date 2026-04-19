@@ -5,7 +5,16 @@ import type {
   BondsFilterParams,
   RecommendationsResponse,
   RecommendationParams,
-  ApiError,
+  DashboardData,
+  Goal,
+  CreateGoalParams,
+  CashAccount,
+  Transaction,
+  CreateTransactionParams,
+  TransactionListData,
+  CashflowData,
+  HistoryData,
+  PortfolioAdjustmentData,
 } from '../types'
 
 // ── Axios instance ─────────────────────────────────────────────────────────
@@ -39,7 +48,7 @@ apiClient.interceptors.response.use(
     console.debug(`[API ←] ${method} ${url}  status=${response.status}`)
     return response
   },
-  (err: AxiosError<ApiError>) => {
+  (err: AxiosError) => {
     const method = err.config?.method?.toUpperCase() ?? '?'
     const url = err.config?.url ?? ''
     const status = err.response?.status ?? 'no-response'
@@ -85,6 +94,13 @@ function stringifyRecParams(params: RecommendationParams): Record<string, string
   }
 }
 
+// ── Auth token helper (reads from localStorage) ─────────────────────────────
+
+export function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem('token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 // ── API Methods ─────────────────────────────────────────────────────────────
 
 export async function getBonds(params: BondsFilterParams = {}): Promise<BondListResponse> {
@@ -123,8 +139,8 @@ export async function getRecommendations(
 // ── Error normalization ─────────────────────────────────────────────────────
 
 function toFriendlyError(err: unknown): Error {
-  if (err instanceof AxiosError<ApiError>) {
-    const detail = err.response?.data?.detail
+  if (err instanceof AxiosError) {
+    const detail = (err.response?.data as any)?.detail
     if (err.response?.status === 404 && detail) {
       return new Error(`Облигация не найдена: ${detail}`)
     }
@@ -140,6 +156,136 @@ function toFriendlyError(err: unknown): Error {
   }
   if (err instanceof Error) return err
   return new Error('Неизвестная ошибка')
+}
+
+// ── Portfolio API Methods ───────────────────────────────────────────────────
+
+export async function getDashboard(): Promise<DashboardData> {
+  try {
+    const { data } = await apiClient.get<DashboardData>('/portfolio/dashboard', {
+      headers: getAuthHeaders(),
+    })
+    return data
+  } catch (err) {
+    throw toFriendlyError(err)
+  }
+}
+
+export async function createGoal(params: CreateGoalParams): Promise<Goal> {
+  try {
+    const { data } = await apiClient.post<Goal>('/portfolio/goals', params, {
+      headers: getAuthHeaders(),
+    })
+    return data
+  } catch (err) {
+    throw toFriendlyError(err)
+  }
+}
+
+export async function getGoal(): Promise<Goal> {
+  try {
+    const { data } = await apiClient.get<Goal>('/portfolio/goals', {
+      headers: getAuthHeaders(),
+    })
+    return data
+  } catch (err) {
+    throw toFriendlyError(err)
+  }
+}
+
+export async function getCash(): Promise<CashAccount> {
+  try {
+    const { data } = await apiClient.get<CashAccount>('/portfolio/cash', {
+      headers: getAuthHeaders(),
+    })
+    return data
+  } catch (err) {
+    throw toFriendlyError(err)
+  }
+}
+
+export async function createTransaction(params: CreateTransactionParams): Promise<Transaction> {
+  try {
+    const { data } = await apiClient.post<Transaction>('/portfolio/transactions', params, {
+      headers: getAuthHeaders(),
+    })
+    return data
+  } catch (err) {
+    throw toFriendlyError(err)
+  }
+}
+
+export async function getTransactions(params: {
+  limit?: number
+  offset?: number
+  type?: string
+  secid?: string
+} = {}): Promise<TransactionListData> {
+  try {
+    const { data } = await apiClient.get<TransactionListData>('/portfolio/transactions', {
+      params,
+      headers: getAuthHeaders(),
+    })
+    return data
+  } catch (err) {
+    throw toFriendlyError(err)
+  }
+}
+
+export async function getCashflow(): Promise<CashflowData> {
+  try {
+    const { data } = await apiClient.get<CashflowData>('/portfolio/dashboard/cashflow', {
+      headers: getAuthHeaders(),
+    })
+    return data
+  } catch (err) {
+    throw toFriendlyError(err)
+  }
+}
+
+export async function getHistory(params: {
+  period?: string
+  limit?: number
+} = {}): Promise<HistoryData> {
+  try {
+    const { data } = await apiClient.get<HistoryData>('/portfolio/history', {
+      params,
+      headers: getAuthHeaders(),
+    })
+    return data
+  } catch (err) {
+    throw toFriendlyError(err)
+  }
+}
+
+export async function takeSnapshot(): Promise<{
+  id: number
+  date: string
+  total_value: number
+  cash: number
+  invested_value: number
+  pnl: number
+}> {
+  try {
+    const { data } = await apiClient.post('/portfolio/history/take-snapshot', {}, {
+      headers: getAuthHeaders(),
+    })
+    return data
+  } catch (err) {
+    throw toFriendlyError(err)
+  }
+}
+
+export async function getPortfolioAdjustment(): Promise<PortfolioAdjustmentData> {
+  try {
+    const { data } = await apiClient.get<PortfolioAdjustmentData>('/recommendations', {
+      params: { mode: 'portfolio_adjustment' },
+      headers: getAuthHeaders(),
+    })
+    return data
+  } catch (err) {
+    throw toFriendlyError(err)
+  }
 }
 
 export { apiClient }

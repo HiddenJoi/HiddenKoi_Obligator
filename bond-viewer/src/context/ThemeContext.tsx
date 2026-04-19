@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode, useEffect, memo } from 'react'
+import { createContext, useContext, useState, useCallback, type ReactNode, useEffect } from 'react'
 
 interface ThemeContextValue {
   isDark: boolean
@@ -31,8 +31,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export const useTheme = memo(function useTheme() {
+export function useTheme() {
   const ctx = useContext(ThemeContext)
   if (!ctx) throw new Error('useTheme must be used inside ThemeProvider')
   return ctx
-})
+}

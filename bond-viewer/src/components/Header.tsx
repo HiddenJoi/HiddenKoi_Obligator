@@ -1,13 +1,28 @@
 import type { ReactNode } from 'react'
 
-type Tab = 'bonds' | 'recommendations'
+type Tab = 'bonds' | 'recommendations' | 'portfolio' | 'cashflow' | 'transactions' | 'history'
 
 interface HeaderProps {
   activeTab?: Tab
   onTabChange?: (tab: Tab) => void
+  tabs?: { value: Tab; label: string }[]
 }
 
-export function Header({ activeTab = 'bonds', onTabChange }: HeaderProps) {
+const TAB_ICONS: Record<string, string> = {
+  bonds: '📋',
+  recommendations: '💡',
+  portfolio: '💼',
+  cashflow: '📅',
+  transactions: '💳',
+  history: '📈',
+}
+
+export function Header({ activeTab = 'bonds', onTabChange, tabs }: HeaderProps) {
+  const tabList = tabs ?? [
+    { value: 'bonds', label: 'Все облигации' },
+    { value: 'recommendations', label: 'Подбор' },
+  ]
+
   return (
     <header className="bg-slate-800 text-white shadow-md">
       <div className="max-w-6xl mx-auto px-6 py-4">
@@ -16,18 +31,15 @@ export function Header({ activeTab = 'bonds', onTabChange }: HeaderProps) {
             Облигатор
           </h1>
           <nav className="flex gap-1">
-            <NavButton
-              active={activeTab === 'bonds'}
-              onClick={() => onTabChange?.('bonds')}
-            >
-              📋 Все облигации
-            </NavButton>
-            <NavButton
-              active={activeTab === 'recommendations'}
-              onClick={() => onTabChange?.('recommendations')}
-            >
-              💡 Рекомендации
-            </NavButton>
+            {tabList.map(tab => (
+              <NavButton
+                key={tab.value}
+                active={activeTab === tab.value}
+                onClick={() => onTabChange?.(tab.value)}
+              >
+                {TAB_ICONS[tab.value] ?? '•'} {tab.label}
+              </NavButton>
+            ))}
           </nav>
         </div>
       </div>

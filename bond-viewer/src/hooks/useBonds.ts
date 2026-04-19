@@ -11,7 +11,7 @@ interface UseBondsResult {
 }
 
 export function useBonds(initialParams: BondsFilterParams = {}): UseBondsResult {
-  const [params, setParams] = useState<BondsFilterParams>(initialParams)
+  const [params] = useState<BondsFilterParams>(initialParams)
   const [bonds, setBonds] = useState<BondListItem[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)

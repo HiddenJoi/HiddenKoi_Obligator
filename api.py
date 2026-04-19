@@ -13,11 +13,17 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
 from cache import cached_get, cached_set, make_key, init_redis, close_redis
+from auth import init_users_table
+from portfolio import init_portfolio_tables, init_goals_table, init_transactions_tables, init_snapshots_table, db_get_portfolio_adjustment
+from notifications import init_notification_tables
+from routes.auth import router as auth_router
+from routes.portfolio import router as portfolio_router
+from routes.notifications import router as notifications_router
 
 # ── Thread pool for sync psycopg2 → async bridge ────────────────────────────
 _DB_EXECUTOR = ThreadPoolExecutor(max_workers=10)
 
-# ── Coupons Enum ─────────────────────────────────────────────────────────────
+# ── Coupons Enum ───────────────────────────────────────────────────────────
 class CouponType(str, Enum):
     FIXED  = "fixed"
     FLOAT  = "float"
@@ -107,10 +113,32 @@ class BondRecommendation(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class Recommendation(BaseModel):
+    action: str
+    secid: str
+    name: Optional[str] = None
+    reason: Optional[str] = None
+    score: Optional[float] = None
+    impact: Optional[dict] = None
+
+
 class RecommendationsResponse(BaseModel):
     total: int
     limit: int
     bonds: list[BondRecommendation]
+
+
+class AdjustmentRecommendation(BaseModel):
+    action: str
+    secid: str
+    name: Optional[str] = None
+    reason: Optional[str] = None
+    score: Optional[float] = None
+    impact: Optional[dict] = None
+
+
+class PortfolioAdjustmentResponse(BaseModel):
+    recommendations: list[AdjustmentRecommendation]
 
 
 # ── App + lifecycle ──────────────────────────────────────────────────────────
@@ -122,12 +150,21 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning("Redis unavailable, caching disabled: %s", e)
+    init_users_table()
+    init_portfolio_tables()
+    init_goals_table()
+    init_transactions_tables()
+    init_snapshots_table()
+    init_notification_tables()
     yield
     await close_redis()
     _DB_EXECUTOR.shutdown(wait=False)
 
 
 app = FastAPI(title="Bonds API", lifespan=lifespan)
+app.include_router(auth_router)
+app.include_router(portfolio_router)
+app.include_router(notifications_router)
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
 app.add_middleware(
@@ -514,6 +551,10 @@ async def get_recommendations(
         ge=0, le=100,
         description="Мин. надёжность для рекомендаций (0-100, по умолчанию 30)",
     ),
+    mode: Optional[str] = Query(
+        default=None,
+        description="portfolio_adjustment — анализ пробелов в портфеле vs цель",
+    ),
 ):
     """
     Подбирает топ-N облигаций, отсортированных по кастомному score.
@@ -522,7 +563,14 @@ async def get_recommendations(
 
     Кэшируется в Redis на 300 с. Кэшируются ВСЕ параметры (включая limit).
     Заголовки X-Cache-Hit и X-Cache-TTL добавляются к каждому ответу.
+
+    ?mode=portfolio_adjustment — анализ отклонений портфеля от цели и рекомендации
+    по сделкам.
     """
+    # Portfolio adjustment mode — requires auth, no caching
+    if mode == "portfolio_adjustment":
+        return await _portfolio_adjustment(request)
+
     cache_key = make_key("recs", request, exclude_pagination=False)
     cached_body, headers = await cached_get("recs", request, exclude_pagination=False)
     if cached_body is not None:
@@ -603,3 +651,31 @@ async def get_recommendations(
     response = RecommendationsResponse(total=total_row or 0, limit=limit, bonds=bonds)
     await cached_set(cache_key, response, ttl=300)
     return response
+
+
+async def _portfolio_adjustment(request: Request) -> JSONResponse:
+    """Portfolio adjustment mode — requires auth, returns buy/sell recommendations."""
+    from auth import get_user_from_token
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    token = auth_header[7:]
+    user = get_user_from_token(token)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    recs = await asyncio.to_thread(db_get_portfolio_adjustment, user["id"])
+
+    items = [
+        AdjustmentRecommendation(
+            action=r["action"],
+            secid=r["secid"],
+            name=r.get("name"),
+            reason=r.get("reason"),
+            score=r.get("score"),
+            impact=r.get("impact"),
+        )
+        for r in recs
+    ]
+    return JSONResponse(content=PortfolioAdjustmentResponse(recommendations=items).model_dump())
